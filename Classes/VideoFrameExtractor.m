@@ -290,6 +290,8 @@ initError:
                         {
                             int bFlag = 0;
                             NSString *videoPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/test.mp4"];
+                            //NSString *videoPath = @"/Users/liaokuohsun/iFrameTest.mp4";
+                            
                             const char *file = [videoPath UTF8String];
                             pFormatCtx_Record = avformat_alloc_context();
                             bFlag = h264_file_create(file, pFormatCtx_Record, pCodecCtx, pAudioCodecCtx,/*fps*/0.0, packet.data, packet.size );
@@ -410,30 +412,24 @@ initError:
         }
         else if(packet.stream_index==audioStream)
         {
-            // TODO
-#if SUPPORT_AUDIO_RECORDING==1
             if(bFirstIFrame==true)
             {
-                if ( pFormatCtx_Record )
+                switch(veVideoRecordState)
                 {
-#if 1
-                    if(vAudioPTS==0)
-                        vAudioPTS=packet.pts;
-                    if(vAudioDTS==0)
-                        vAudioDTS=packet.dts;
-                    
-                    packet.pts = packet.pts - vAudioPTS;
-                    packet.dts = packet.dts - vAudioDTS;
-#endif
-                    h264_file_write_frame( pFormatCtx_Record, packet.stream_index, packet.data, packet.size, packet.dts, packet.pts);
-                    
-                }
-                else
-                {
-                    NSLog(@"pFormatCtx_Record no exist");
+                    case eH264RecActive:
+                    {
+                        if ( pFormatCtx_Record )
+                        {
+                            h264_file_write_audio_frame(pFormatCtx_Record, pAudioCodecCtx, packet.stream_index, packet.data, packet.size, packet.dts, packet.pts);
+                            
+                        }
+                        else
+                        {
+                            NSLog(@"pFormatCtx_Record no exist");
+                        }
+                    }
                 }
             }
-#endif
         }
         else
         {

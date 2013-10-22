@@ -12,6 +12,7 @@
 #include "libavformat/avformat.h"
 #include "H264_Save.h"
 //#include "libavformat/avio.h"
+#import "AudioUtilities.h"
 
 int vVideoStreamIdx = -1, vAudioStreamIdx = -1,  waitkey = 1;
 
@@ -67,36 +68,144 @@ void h264_file_close(AVFormatContext *fc)
 void h264_file_write_frame(AVFormatContext *fc, int vStreamIdx, const void* p, int len, int64_t dts, int64_t pts )
 {
     AVStream *pst = NULL;
+    AVPacket pkt;
+    
+    if ( 0 > vVideoStreamIdx )
+        return;
+
+    // may be audio or video
+    pst = fc->streams[ vStreamIdx ];
+    
+    // Init packet
+    av_init_packet( &pkt );
+    
+    if(vStreamIdx ==vVideoStreamIdx)
+    {
+        pkt.flags |= ( 0 >= getVopType( p, len ) ) ? AV_PKT_FLAG_KEY : 0;
+        //pkt.flags |= AV_PKT_FLAG_KEY;
+        pkt.stream_index = pst->index;
+        pkt.data = (uint8_t*)p;
+        pkt.size = len;
+    
+#if PTS_DTS_IS_CORRECT == 1
+        pkt.dts = dts;
+        pkt.pts = pts;
+#else
+        pkt.dts = AV_NOPTS_VALUE;
+        pkt.pts = AV_NOPTS_VALUE;
+#endif
+        // TODO: mark or unmark the log
+        //fprintf(stderr, "dts=%lld, pts=%lld\n",dts,pts);
+        // av_write_frame( fc, &pkt );
+    }
+    av_interleaved_write_frame( fc, &pkt );
+}
+
+void h264_file_write_audio_frame(AVFormatContext *fc, AVCodecContext *pAudioCodecContext ,int vStreamIdx, const void* pData, int vDataLen, int64_t dts, int64_t pts )
+{
+    int vRet=0;
+    AVCodecContext *pAudioOutputCodecContext;
+    AVStream *pst = NULL;
+    AVPacket pkt;
+    
     if ( 0 > vVideoStreamIdx )
         return;
     
     // may be audio or video
     pst = fc->streams[ vStreamIdx ];
+    pAudioOutputCodecContext = pst->codec;
     
     // Init packet
-    AVPacket pkt;
     av_init_packet( &pkt );
-    if(vStreamIdx==vVideoStreamIdx)
-    {
-        pkt.flags |= ( 0 >= getVopType( p, len ) ) ? AV_PKT_FLAG_KEY : 0;
-        //pkt.flags |= AV_PKT_FLAG_KEY;
-    }
-    pkt.stream_index = pst->index;
-    pkt.data = (uint8_t*)p;
-    pkt.size = len;
     
-#if PTS_DTS_IS_CORRECT == 1
-    pkt.dts = dts;
-    pkt.pts = pts;
+    if(vStreamIdx==vAudioStreamIdx)
+    {
+        if(pAudioOutputCodecContext==NULL)
+        {
+            NSLog(@"pAudioOutputCodecContext==NULL");
+        }
+        else
+        {
+            int bIsADTSAAS=0, vRedudantHeaderOfAAC=0;
+            AVPacket AudioPacket={0};
+            tAACADTSHeaderInfo vxADTSHeader={0};
+            uint8_t *pHeader = (uint8_t *)pData;
+            
+            bIsADTSAAS = [AudioUtilities parseAACADTSHeader:pHeader ToHeader:(tAACADTSHeaderInfo *) &vxADTSHeader];
+            // If header has the syncword of adts_fixed_header
+            // syncword = 0xFFF
+            if(bIsADTSAAS)
+            {
+                vRedudantHeaderOfAAC = 7;
+            }
+            else
+            {
+                vRedudantHeaderOfAAC = 0;
+            }
+            
+#if 0
+            int gotFrame=0, len=0;
+            
+            AVFrame vxAVFrame1={0};
+            AVFrame *pAVFrame1 = &vxAVFrame1;
+            
+            av_init_packet(&AudioPacket);
+            avcodec_get_frame_defaults(pAVFrame1);
+
+            if(bIsADTSAAS)
+            {
+                AudioPacket.size = vDataLen-vRedudantHeaderOfAAC;
+                AudioPacket.data = pHeader+vRedudantHeaderOfAAC;
+            }
+            else
+            {
+                // This will produce error message
+                // "malformated aac bitstream, use -absf aac_adtstoasc"
+                AudioPacket.size = vDataLen;
+                AudioPacket.data = pHeader;
+            }
+            // Decode from input format to PCM
+            len = avcodec_decode_audio4(pAudioCodecContext, pAVFrame1, &gotFrame, &AudioPacket);
+            
+            // Encode from PCM to AAC
+            vRet = avcodec_encode_audio2(pAudioOutputCodecContext, &pkt, pAVFrame1, &gotFrame);
+            if(vRet!=0)
+                NSLog(@"avcodec_encode_audio2 fail");
+            pkt.stream_index = vStreamIdx;//pst->index;
+
 #else
-    pkt.dts = AV_NOPTS_VALUE;
-    pkt.pts = AV_NOPTS_VALUE;
+
+            if(pAudioCodecContext->codec_id==AV_CODEC_ID_AAC)
+            {
+                if(bIsADTSAAS)
+                {
+                    pkt.size = vDataLen-vRedudantHeaderOfAAC;
+                    pkt.data = pHeader+vRedudantHeaderOfAAC;
+                }
+                else
+                {
+                    // This will produce error message
+                    // "malformated aac bitstream, use -absf aac_adtstoasc"
+                    pkt.size = vDataLen;
+                    pkt.data = pHeader;
+                }
+                pkt.stream_index = vStreamIdx;//pst->index;
+                pkt.flags |= AV_PKT_FLAG_KEY;
+                
+            }
+
 #endif
-    // TODO: mark or unmark the log
-    //fprintf(stderr, "dts=%lld, pts=%lld\n",dts,pts);
-    // av_write_frame( fc, &pkt );
-    av_interleaved_write_frame( fc, &pkt );
+            pkt.dts = AV_NOPTS_VALUE;
+            pkt.pts = AV_NOPTS_VALUE;
+            vRet = av_interleaved_write_frame( fc, &pkt );
+            if(vRet!=0)
+                NSLog(@"av_interleaved_write_frame for audio fail");
+        }
+    }
+
+
 }
+
 
 void h264_file_write_frame2(AVFormatContext *fc, int vStreamIdx, AVPacket *pPkt )
 {    
@@ -108,13 +217,13 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
 {
     int vRet=0;
     AVOutputFormat *of=NULL;
-    AVStream *pst=NULL, *pst2=NULL;
-    AVCodecContext *pcc=NULL, *pcc2=NULL;
-    
+    AVStream *pst=NULL;
+    AVCodecContext *pcc=NULL, *pAudioOutputCodecContext=NULL;
+
     avcodec_register_all();
     av_register_all();
     av_log_set_level(AV_LOG_VERBOSE);
-
+    
     if(!pFilePath)
     {
         fprintf(stderr, "FilePath no exist");
@@ -192,49 +301,81 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
     memcpy(pcc->extradata, pCodecCtx->extradata, pCodecCtx->extradata_size);
     pcc->extradata_size = pCodecCtx->extradata_size;
     
-    // TODO: support audio recording
-#if SUPPORT_AUDIO_RECORDING == 1
     // For Audio stream
     if(pAudioCodecCtx)
     {
-        // Add video stream
-#if 1
-        pcc2 = avcodec_alloc_context3(pAudioCodecCtx->codec);
-        pst2 = avformat_new_stream( fc, pcc2->codec );
-        vVideoStreamIdx = pst2->index;
-        NSLog(@"Audio Stream:%d",vVideoStreamIdx);
+
+        AVCodec *pAudioCodec=NULL;
+        AVStream *pst2=NULL;
         
-#else
-        pst2 = avformat_new_stream( fc, pAudioCodecCtx->codec );
-        vVideoStreamIdx = pst2->index;
-        NSLog(@"Audio Stream:%d",vVideoStreamIdx);
+        pAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
         
-        pcc2 = pst2->codec;
-        avcodec_get_context_defaults3( pcc2, AVMEDIA_TYPE_AUDIO );
-#endif
-        pcc2->channels = pAudioCodecCtx->channels;
-        pcc2->channel_layout = pAudioCodecCtx->channel_layout;
-        pcc2->sample_rate = pAudioCodecCtx->sample_rate;
-        pcc2->sample_fmt = pAudioCodecCtx->sample_fmt;
-        pcc2->sample_aspect_ratio = pAudioCodecCtx->sample_aspect_ratio;
+        // Add audio stream
+        //pst2 = avformat_new_stream( fc, 1 );
+        pst2 = avformat_new_stream( fc, pAudioCodec );
+        vAudioStreamIdx = pst2->index;
+        pAudioOutputCodecContext = pst2->codec;
+        avcodec_get_context_defaults3( pAudioOutputCodecContext, pAudioCodec );
+        NSLog(@"Audio Stream:%d",vAudioStreamIdx);
         
+        pAudioOutputCodecContext->codec_type = AVMEDIA_TYPE_AUDIO;
+        pAudioOutputCodecContext->codec_id = AV_CODEC_ID_AAC;
+        pAudioOutputCodecContext->bit_rate = pAudioCodecCtx->bit_rate;
+        
+        // Copy the codec attributes
+        pAudioOutputCodecContext->channels = pAudioCodecCtx->channels;
+        pAudioOutputCodecContext->channel_layout = pAudioCodecCtx->channel_layout;
+        pAudioOutputCodecContext->sample_rate = pAudioCodecCtx->sample_rate;
+        
+        // AV_SAMPLE_FMT_U8P, AV_SAMPLE_FMT_S16P
+        pAudioOutputCodecContext->sample_fmt = AV_SAMPLE_FMT_FLTP;//pAudioCodecCtx->sample_fmt;
+
+        pAudioOutputCodecContext->sample_aspect_ratio = pAudioCodecCtx->sample_aspect_ratio;
+       
+//        pAudioOutputCodecContext->time_base.num = pAudioCodecCtx->time_base.num;
+//        pAudioOutputCodecContext->time_base.den = pAudioCodecCtx->time_base.den;
+//        pAudioOutputCodecContext->ticks_per_frame = pAudioCodecCtx->ticks_per_frame;
+        
+        AVDictionary *opts = NULL;
+        av_dict_set(&opts, "strict", "experimental", 0);
+        
+        if (avcodec_open2(pAudioOutputCodecContext, pAudioCodec, &opts) < 0) {
+            fprintf(stderr, "\ncould not open codec\n");
+        }
+        
+        av_dict_free(&opts);
+        
+#if 0
+        // For Audio, this part is no need
         if(pAudioCodecCtx->extradata_size!=0)
         {
-            pcc2->extradata = malloc(sizeof(uint8_t)*pAudioCodecCtx->extradata_size);
-            memcpy(pcc2->extradata, pAudioCodecCtx->extradata, pAudioCodecCtx->extradata_size);
-            pcc2->extradata_size = pAudioCodecCtx->extradata_size;
+            NSLog(@"extradata_size !=0");
+            pAudioOutputCodecContext->extradata = malloc(sizeof(uint8_t)*pAudioCodecCtx->extradata_size);
+            memcpy(pAudioOutputCodecContext->extradata, pAudioCodecCtx->extradata, pAudioCodecCtx->extradata_size);
+            pAudioOutputCodecContext->extradata_size = pAudioCodecCtx->extradata_size;
         }
-    }
+        else
+        {
+            // For WMA test only
+            pAudioOutputCodecContext->extradata_size = 0;
+            NSLog(@"extradata_size ==0");
+        }
 #endif
+    }
     
     if(fc->oformat->flags & AVFMT_GLOBALHEADER)
     {
         pcc->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        pAudioOutputCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
     }
     
     if ( !( fc->oformat->flags & AVFMT_NOFILE ) )
     {
-        avio_open( &fc->pb, fc->filename, AVIO_FLAG_WRITE );
+        vRet = avio_open( &fc->pb, fc->filename, AVIO_FLAG_WRITE );
+        if(vRet!=0)
+        {
+            NSLog(@"avio_open(%s) error", fc->filename);
+        }
     }
     
     // dump format in console

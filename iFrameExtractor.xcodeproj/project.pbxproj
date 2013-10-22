@@ -30,6 +30,11 @@
 		9A95E74F174F5AA6008EB183 /* H264_Save.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A95E74E174F5AA6008EB183 /* H264_Save.m */; };
 		9ADF204A1761B6180018ACF3 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 9ADF20491761B6180018ACF3 /* Default-568h@2x.png */; };
 		9ADF204C1761BCFD0018ACF3 /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9ADF204B1761BCFD0018ACF3 /* AssetsLibrary.framework */; };
+		B27C493C1816DE050012A4E9 /* AudioPacketQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = B27C49391816DE050012A4E9 /* AudioPacketQueue.m */; };
+		B27C493D1816DE050012A4E9 /* AudioPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = B27C493A1816DE050012A4E9 /* AudioPlayer.m */; };
+		B27C493E1816DE050012A4E9 /* AudioUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = B27C493B1816DE050012A4E9 /* AudioUtilities.m */; };
+		B27C49401816DE9D0012A4E9 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27C493F1816DE9D0012A4E9 /* AudioToolbox.framework */; };
+		B27C49421816DEA30012A4E9 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27C49411816DEA30012A4E9 /* AVFoundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +68,14 @@
 		9A95E750174F5AC0008EB183 /* H264_Save.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = H264_Save.h; sourceTree = "<group>"; };
 		9ADF20491761B6180018ACF3 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
 		9ADF204B1761BCFD0018ACF3 /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = System/Library/Frameworks/AssetsLibrary.framework; sourceTree = SDKROOT; };
+		B27C49361816DE050012A4E9 /* AudioPacketQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioPacketQueue.h; sourceTree = "<group>"; };
+		B27C49371816DE050012A4E9 /* AudioPlayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioPlayer.h; sourceTree = "<group>"; };
+		B27C49381816DE050012A4E9 /* AudioUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioUtilities.h; sourceTree = "<group>"; };
+		B27C49391816DE050012A4E9 /* AudioPacketQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioPacketQueue.m; sourceTree = "<group>"; };
+		B27C493A1816DE050012A4E9 /* AudioPlayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioPlayer.m; sourceTree = "<group>"; };
+		B27C493B1816DE050012A4E9 /* AudioUtilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioUtilities.m; sourceTree = "<group>"; };
+		B27C493F1816DE9D0012A4E9 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		B27C49411816DEA30012A4E9 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +83,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B27C49421816DEA30012A4E9 /* AVFoundation.framework in Frameworks */,
+				B27C49401816DE9D0012A4E9 /* AudioToolbox.framework in Frameworks */,
 				9ADF204C1761BCFD0018ACF3 /* AssetsLibrary.framework in Frameworks */,
 				9A95E74D174F11D7008EB183 /* libiconv.2.4.0.dylib in Frameworks */,
 				156A982415DCDD9B00898981 /* libavcodec.a in Frameworks */,
@@ -93,6 +108,7 @@
 		080E96DDFE201D6D7F000001 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				B27C49351816DD690012A4E9 /* AudioPlayer */,
 				1D3623240D0F684500981E51 /* iFrameExtractorAppDelegate.h */,
 				0921E13F10FADAFB004EAA40 /* Utilities.h */,
 				1D3623250D0F684500981E51 /* iFrameExtractorAppDelegate.m */,
@@ -164,6 +180,8 @@
 		29B97323FDCFA39411CA2CEA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				B27C49411816DEA30012A4E9 /* AVFoundation.framework */,
+				B27C493F1816DE9D0012A4E9 /* AudioToolbox.framework */,
 				9A95E74C174F11D7008EB183 /* libiconv.2.4.0.dylib */,
 				9ADF204B1761BCFD0018ACF3 /* AssetsLibrary.framework */,
 				156A981A15DCDD8C00898981 /* libbz2.1.0.dylib */,
@@ -173,6 +191,19 @@
 				098D922A11DE19E900355815 /* libz.dylib */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		B27C49351816DD690012A4E9 /* AudioPlayer */ = {
+			isa = PBXGroup;
+			children = (
+				B27C49361816DE050012A4E9 /* AudioPacketQueue.h */,
+				B27C49371816DE050012A4E9 /* AudioPlayer.h */,
+				B27C49381816DE050012A4E9 /* AudioUtilities.h */,
+				B27C49391816DE050012A4E9 /* AudioPacketQueue.m */,
+				B27C493A1816DE050012A4E9 /* AudioPlayer.m */,
+				B27C493B1816DE050012A4E9 /* AudioUtilities.m */,
+			);
+			name = AudioPlayer;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -239,9 +270,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D60589B0D05DD56006BFB54 /* main.m in Sources */,
+				B27C493E1816DE050012A4E9 /* AudioUtilities.m in Sources */,
 				1D3623260D0F684500981E51 /* iFrameExtractorAppDelegate.m in Sources */,
+				B27C493D1816DE050012A4E9 /* AudioPlayer.m in Sources */,
 				0921E14110FADAFB004EAA40 /* Utilities.m in Sources */,
 				0921E14610FADB97004EAA40 /* VideoFrameExtractor.m in Sources */,
+				B27C493C1816DE050012A4E9 /* AudioPacketQueue.m in Sources */,
 				9A95E74F174F5AA6008EB183 /* H264_Save.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
