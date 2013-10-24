@@ -50,6 +50,8 @@
     // The test file url is http://http://mm2.pcslab.com/mm/
 //    self.video = [[VideoFrameExtractor alloc] initWithVideo:[Utilities bundlePath:@"7h800-2.mp4"]];
 	self.video = [[VideoFrameExtractor alloc] initWithVideo:@"rtsp://mm2.pcslab.com/mm/7h800.mp4"];
+    //self.video = [[VideoFrameExtractor alloc] initWithVideo:@"rtsp://192.168.82.75/stream2"];
+    //self.video = [[VideoFrameExtractor alloc] initWithVideo:@"rtsp://192.168.82.81/stream2"];
 //    self.video = [[VideoFrameExtractor alloc] initWithVideo:@"rtsp://mm2.pcslab.com/mm/7h1500.mp4"];
     
     // 20130524 albert.liao modified end

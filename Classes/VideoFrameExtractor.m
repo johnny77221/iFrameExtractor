@@ -195,7 +195,10 @@
             av_log(NULL, AV_LOG_ERROR, "Cannot open audio decoder\n");
             goto initError;
         }
+
     }
+    
+    av_dump_format(pFormatCtx, 0, [moviePath cStringUsingEncoding:NSASCIIStringEncoding], 0);
     
     // Allocate video frame
     pFrame = avcodec_alloc_frame();
@@ -240,6 +243,11 @@ initError:
 }
 
 -(void)dealloc {
+    
+    // 20131024 albert.liao modified start
+    [aPlayer Stop:TRUE];
+    // 20131024 albert.liao modified end
+    
 	// Free scaler
 	sws_freeContext(img_convert_ctx);	
 
@@ -289,8 +297,8 @@ initError:
                         if ( !pFormatCtx_Record )
                         {
                             int bFlag = 0;
-                            NSString *videoPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/test.mp4"];
-                            //NSString *videoPath = @"/Users/liaokuohsun/iFrameTest.mp4";
+                            //NSString *videoPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/test.mp4"];
+                            NSString *videoPath = @"/Users/liaokuohsun/iFrameTest.mp4";
                             
                             const char *file = [videoPath UTF8String];
                             pFormatCtx_Record = avformat_alloc_context();
@@ -412,6 +420,72 @@ initError:
         }
         else if(packet.stream_index==audioStream)
         {
+            // 20131024 albert.liao modfied start
+            static int vPktCount=0;
+            BOOL bIsAACADTS = FALSE;
+            int ret = 0;
+
+            if(aPlayer.vAACType == eAAC_UNDEFINED)
+            {
+                tAACADTSHeaderInfo vxAACADTSHeaderInfo = {0};
+                bIsAACADTS = [AudioUtilities parseAACADTSHeader:(uint8_t *)packet.data ToHeader:&vxAACADTSHeaderInfo];
+            }
+            
+            @synchronized(aPlayer)
+            {
+                if(aPlayer==nil)
+                {
+                    aPlayer = [[AudioPlayer alloc]initAudio:nil withCodecCtx:(AVCodecContext *) pAudioCodecCtx];
+                    NSLog(@"aPlayer initAudio");
+                    
+                    if(bIsAACADTS)
+                    {
+                        aPlayer.vAACType = eAAC_ADTS;
+                        //NSLog(@"is ADTS AAC");
+                    }
+                }
+                else
+                {
+                    if(vPktCount<5) // The voice is listened once image is rendered
+                    {
+                        vPktCount++;
+                    }
+                    else
+                    {
+                        if([aPlayer getStatus]!=eAudioRunning)
+                        {
+                            dispatch_async(dispatch_get_main_queue(), ^(void) {
+                                @synchronized(aPlayer)
+                                {
+                                    NSLog(@"aPlayer start play");
+                                    [aPlayer Play];
+                                }
+                                
+                            });
+                        }
+                    }
+                }
+            };
+            
+            @synchronized(aPlayer)
+            {
+                int ret = 0;
+                
+//                    AVPacket vxPacket = {0};
+//                    uint8_t *pTmp = (uint8_t *) malloc(frameDataLength);
+//                    memcpy(pTmp, frameData, frameDataLength);
+//                    vxPacket.data = (uint8_t *)pTmp;
+//                    vxPacket.size = frameDataLength;
+//                    ret = [aPlayer putAVPacket:&vxPacket];
+                
+                ret = [aPlayer putAVPacket:&packet];
+                if(ret <= 0)
+                    NSLog(@"Put Audio Packet Error!!");
+                
+            }
+
+            // 20131024 albert.liao modfied end
+        
             if(bFirstIFrame==true)
             {
                 switch(veVideoRecordState)
@@ -433,7 +507,7 @@ initError:
         }
         else
         {
-            fprintf(stderr, "packet len=%d, Byte=%02X%02X%02X%02X%02X\n",\
+            //fprintf(stderr, "packet len=%d, Byte=%02X%02X%02X%02X%02X\n",\
                     packet.size, packet.data[0],packet.data[1],packet.data[2],packet.data[3], packet.data[4]);
         }
         // 20130525 albert.liao modified end

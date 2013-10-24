@@ -6,6 +6,9 @@
 //  Copyright (c) 2013年 Liao KuoHsun. All rights reserved.
 //
 
+#ifndef AudioUtilities_h
+#define AudioUtilities_h
+
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import "AudioPacketQueue.h"
@@ -48,3 +51,6 @@ typedef struct AACADTSHeaderInfo {
 + (void) PrintFileStreamBasicDescriptionFromFile:(NSString *) FilePath;
 + (void) writeWavHeaderWithCodecCtx: (AVCodecContext *)pAudioCodecCtx withFormatCtx: (AVFormatContext *) pFormatCtx toFile: (FILE *) wavFile;
 @end
+
+#endif
+

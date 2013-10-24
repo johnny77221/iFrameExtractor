@@ -6,6 +6,9 @@
 //
 //
 
+#ifndef AudioPacketQueue_h
+#define AudioPacketQueue_h
+
 #import <Foundation/Foundation.h>
 #include "libavformat/avformat.h"
 
@@ -22,3 +25,5 @@
 -(int) getAVPacket :(AVPacket *) pkt;
 -(void)freeAVPacket:(AVPacket *) pkt;
 @end
+
+#endif

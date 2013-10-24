@@ -175,28 +175,20 @@ void h264_file_write_audio_frame(AVFormatContext *fc, AVCodecContext *pAudioCode
 
 #else
 
-            if(pAudioCodecContext->codec_id==AV_CODEC_ID_AAC)
+            //if(pAudioCodecContext->codec_id==AV_CODEC_ID_AAC)
             {
-                if(bIsADTSAAS)
-                {
-                    pkt.size = vDataLen-vRedudantHeaderOfAAC;
-                    pkt.data = pHeader+vRedudantHeaderOfAAC;
-                }
-                else
-                {
-                    // This will produce error message
-                    // "malformated aac bitstream, use -absf aac_adtstoasc"
-                    pkt.size = vDataLen;
-                    pkt.data = pHeader;
-                }
+                // This will produce error message
+                // "malformated aac bitstream, use -absf aac_adtstoasc"
+                pkt.size = vDataLen-vRedudantHeaderOfAAC;
+                pkt.data = pHeader+vRedudantHeaderOfAAC;
                 pkt.stream_index = vStreamIdx;//pst->index;
                 pkt.flags |= AV_PKT_FLAG_KEY;
                 
             }
 
 #endif
-            pkt.dts = AV_NOPTS_VALUE;
-            pkt.pts = AV_NOPTS_VALUE;
+//            pkt.dts = AV_NOPTS_VALUE;
+//            pkt.pts = AV_NOPTS_VALUE;
             vRet = av_interleaved_write_frame( fc, &pkt );
             if(vRet!=0)
                 NSLog(@"av_interleaved_write_frame for audio fail");
@@ -304,38 +296,44 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
     // For Audio stream
     if(pAudioCodecCtx)
     {
-
         AVCodec *pAudioCodec=NULL;
         AVStream *pst2=NULL;
-        
         pAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
         
         // Add audio stream
-        //pst2 = avformat_new_stream( fc, 1 );
         pst2 = avformat_new_stream( fc, pAudioCodec );
         vAudioStreamIdx = pst2->index;
         pAudioOutputCodecContext = pst2->codec;
         avcodec_get_context_defaults3( pAudioOutputCodecContext, pAudioCodec );
         NSLog(@"Audio Stream:%d",vAudioStreamIdx);
+        NSLog(@"pAudioCodecCtx->bits_per_coded_sample=%d",pAudioCodecCtx->bits_per_coded_sample);
         
         pAudioOutputCodecContext->codec_type = AVMEDIA_TYPE_AUDIO;
         pAudioOutputCodecContext->codec_id = AV_CODEC_ID_AAC;
-        pAudioOutputCodecContext->bit_rate = pAudioCodecCtx->bit_rate;
         
         // Copy the codec attributes
         pAudioOutputCodecContext->channels = pAudioCodecCtx->channels;
         pAudioOutputCodecContext->channel_layout = pAudioCodecCtx->channel_layout;
         pAudioOutputCodecContext->sample_rate = pAudioCodecCtx->sample_rate;
+        pAudioOutputCodecContext->bit_rate = 12000;//pAudioCodecCtx->sample_rate * pAudioCodecCtx->bits_per_coded_sample;
+        pAudioOutputCodecContext->bits_per_coded_sample = pAudioCodecCtx->bits_per_coded_sample;
+        pAudioOutputCodecContext->profile = pAudioCodecCtx->profile;
+        //FF_PROFILE_AAC_LOW;
+        // pAudioCodecCtx->bit_rate;
         
         // AV_SAMPLE_FMT_U8P, AV_SAMPLE_FMT_S16P
-        pAudioOutputCodecContext->sample_fmt = AV_SAMPLE_FMT_FLTP;//pAudioCodecCtx->sample_fmt;
-
-        pAudioOutputCodecContext->sample_aspect_ratio = pAudioCodecCtx->sample_aspect_ratio;
-       
-//        pAudioOutputCodecContext->time_base.num = pAudioCodecCtx->time_base.num;
-//        pAudioOutputCodecContext->time_base.den = pAudioCodecCtx->time_base.den;
-//        pAudioOutputCodecContext->ticks_per_frame = pAudioCodecCtx->ticks_per_frame;
+        //pAudioOutputCodecContext->sample_fmt = AV_SAMPLE_FMT_FLTP;//pAudioCodecCtx->sample_fmt;
+        pAudioOutputCodecContext->sample_fmt = pAudioCodecCtx->sample_fmt;
+        //pAudioOutputCodecContext->sample_fmt = AV_SAMPLE_FMT_U8;
         
+        pAudioOutputCodecContext->sample_aspect_ratio = pAudioCodecCtx->sample_aspect_ratio;
+
+        pAudioOutputCodecContext->time_base.num = pAudioCodecCtx->time_base.num;
+        pAudioOutputCodecContext->time_base.den = pAudioCodecCtx->time_base.den;
+        pAudioOutputCodecContext->ticks_per_frame = pAudioCodecCtx->ticks_per_frame;
+        pAudioOutputCodecContext->frame_size = 1024;
+        
+        NSLog(@"profile:%d, sample_rate:%d, channles:%d", pAudioOutputCodecContext->profile, pAudioOutputCodecContext->sample_rate, pAudioOutputCodecContext->channels);
         AVDictionary *opts = NULL;
         av_dict_set(&opts, "strict", "experimental", 0);
         

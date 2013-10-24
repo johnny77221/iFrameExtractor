@@ -6,6 +6,9 @@
 //
 //
 
+#ifndef AudioPlayer_h
+#define AudioPlayer_h
+
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import "AudioPacketQueue.h"
@@ -87,3 +90,5 @@ typedef enum eAACType {
 //@property NSMutableArray *pSampleQueue;
 @property eAACType vAACType;
 @end
+
+#endif

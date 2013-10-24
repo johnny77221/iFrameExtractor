@@ -6,8 +6,8 @@
 //
 //
 
-#ifndef iFrameExtractor_H264_Save_h
-#define iFrameExtractor_H264_Save_h
+#ifndef H264_Save_h
+#define H264_Save_h
 
 // TODO: when PTS_DTS_IS_CORRECT==1, it should ok??
 #define PTS_DTS_IS_CORRECT 0
