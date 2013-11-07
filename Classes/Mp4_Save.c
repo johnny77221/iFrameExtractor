@@ -10,11 +10,106 @@
 #include <stdio.h>
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
-#include "H264_Save.h"
+#include "Mp4_Save.h"
 //#include "libavformat/avio.h"
-#import "AudioUtilities.h"
+//#import "AudioUtilities.h"
 
 int vVideoStreamIdx = -1, vAudioStreamIdx = -1,  waitkey = 1;
+
+
+
+
+// Reference : https://github.com/mstorsjo/libav/blob/fdk-aac/libavcodec/aacadtsdec.c
+typedef struct AACADTSHeaderInfo {
+    
+    // == adts_fixed_header ==
+    uint16_t   syncword;                // 12 bslbf
+    uint8_t    ID;                       // 1 bslbf
+    uint8_t    layer;                    // 2 uimsbf
+    uint8_t    protection_absent;        // 1 bslbf
+    uint8_t    profile;                  // 2 uimsbf
+    uint8_t    sampling_frequency_index; // 4 uimsbf
+    uint8_t    private_bit;              // 1 bslbf
+    uint8_t    channel_configuration;    // 3 uimsbf
+    uint8_t    original_copy;            // 1 bslbf
+    uint8_t    home;                     // 1 bslbf
+    
+    // == adts_variable_header ==
+    uint8_t copyright_identification_bit; //1 bslbf
+    uint8_t copyright_identification_start; //1 bslbf
+    uint16_t frame_length; //13 bslbf
+    uint16_t adts_buffer_fullness; //11 bslbf
+    uint8_t number_of_raw_data_blocks_in_frame; //2 uimsfb
+    
+} tAACADTSHeaderInfo;
+
+int parseAACADTSHeader(unsigned char *pInput,tAACADTSHeaderInfo *pADTSHeader)
+{
+    int bHasSyncword = 0;
+    if(pADTSHeader==NULL)
+        return 0;
+    
+    // == adts_fixed_header ==
+    //   syncword; 12 bslbf should be 0x1111 1111 1111
+    if(pInput[0]==0xFF)
+    {
+        if((pInput[1]&0xF0)==0xF0)
+        {
+            bHasSyncword = 1;
+        }
+    }
+    
+    if(!bHasSyncword) return 0;
+    
+    //== adts_fixed_header ==
+    //    uint16_t   syncword;                // 12 bslbf
+    //    uint8_t    ID;                       // 1 bslbf
+    //    uint8_t    layer;                    // 2 uimsbf
+    //    uint8_t    protection_absent;        // 1 bslbf
+    //    uint8_t    profile;                  // 2 uimsbf
+    //    uint8_t    sampling_frequency_index; // 4 uimsbf
+    //    uint8_t    private_bit;              // 1 bslbf
+    //    uint8_t    channel_configuration;    // 3 uimsbf
+    //    uint8_t    original_copy;            // 1 bslbf
+    //    uint8_t    home;                     // 1 bslbf
+    
+    pADTSHeader->syncword = 0x0fff;
+    pADTSHeader->ID = (pInput[1]&0x08)>>3;
+    pADTSHeader->layer = (pInput[1]&0x06)>>2;
+    pADTSHeader->protection_absent = pInput[1]&0x01;
+    
+    pADTSHeader->profile = (pInput[2]&0xC0)>>6;
+    pADTSHeader->sampling_frequency_index = (pInput[2]&0x3C)>>2;
+    pADTSHeader->private_bit = (pInput[2]&0x02)>>1;
+    
+    pADTSHeader->channel_configuration = ((pInput[2]&0x01)<<2) + ((pInput[3]&0xC0)>>6);
+    pADTSHeader->original_copy = ((pInput[3]&0x20)>>5);
+    pADTSHeader->home = ((pInput[3]&0x10)>>4);
+    
+    
+    // == adts_variable_header ==
+    //    copyright_identification_bit; 1 bslbf
+    //    copyright_identification_start; 1 bslbf
+    //    frame_length; 13 bslbf
+    //    adts_buffer_fullness; 11 bslbf
+    //    number_of_raw_data_blocks_in_frame; 2 uimsfb
+    
+    pADTSHeader->copyright_identification_bit = ((pInput[3]&0x08)>>3);
+    pADTSHeader->copyright_identification_start = ((pInput[3]&0x04)>>2);
+    pADTSHeader->frame_length = ((pInput[3]&0x03)<<11) + ((pInput[4])<<3) + ((pInput[5]&0xE0)>>5);
+    pADTSHeader->adts_buffer_fullness = ((pInput[5]&0x1F)<<6) + ((pInput[6]&0xFC)>>2);
+    pADTSHeader->number_of_raw_data_blocks_in_frame = ((pInput[6]&0x03));
+    
+    
+    // We can't use bits mask to convert byte array to ADTS structure.
+    // http://mjfrazer.org/mjfrazer/bitfields/
+    // Big endian machines pack bitfields from most significant byte to least.
+    // Little endian machines pack bitfields from least significant byte to most.
+    // Direct bits mapping is hard....  we should implement a parser ourself.
+    
+    return 1;
+}
+
 
 // < 0 = error
 // 0 = I-Frame
@@ -122,7 +217,7 @@ void h264_file_write_audio_frame(AVFormatContext *fc, AVCodecContext *pAudioCode
     {
         if(pAudioOutputCodecContext==NULL)
         {
-            NSLog(@"pAudioOutputCodecContext==NULL");
+            fprintf(stderr,"pAudioOutputCodecContext==NULL");
         }
         else
         {
@@ -131,7 +226,8 @@ void h264_file_write_audio_frame(AVFormatContext *fc, AVCodecContext *pAudioCode
             tAACADTSHeaderInfo vxADTSHeader={0};
             uint8_t *pHeader = (uint8_t *)pData;
             
-            bIsADTSAAS = [AudioUtilities parseAACADTSHeader:pHeader ToHeader:(tAACADTSHeaderInfo *) &vxADTSHeader];
+            //bIsADTSAAS = [AudioUtilities parseAACADTSHeader:pHeader ToHeader:(tAACADTSHeaderInfo *) &vxADTSHeader];
+            bIsADTSAAS = parseAACADTSHeader(pHeader, &vxADTSHeader);
             // If header has the syncword of adts_fixed_header
             // syncword = 0xFFF
             if(bIsADTSAAS)
@@ -191,7 +287,7 @@ void h264_file_write_audio_frame(AVFormatContext *fc, AVCodecContext *pAudioCode
 //            pkt.pts = AV_NOPTS_VALUE;
             vRet = av_interleaved_write_frame( fc, &pkt );
             if(vRet!=0)
-                NSLog(@"av_interleaved_write_frame for audio fail");
+                fprintf(stderr,"av_interleaved_write_frame for audio fail");
         }
     }
 
@@ -237,7 +333,7 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
     // Add video stream
     pst = avformat_new_stream( fc, 0 );
     vVideoStreamIdx = pst->index;
-    NSLog(@"Video Stream:%d",vVideoStreamIdx);
+    fprintf(stderr,"Video Stream:%d",vVideoStreamIdx);
     
     pcc = pst->codec;
     avcodec_get_context_defaults3( pcc, AVMEDIA_TYPE_VIDEO );
@@ -276,7 +372,7 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
         pTimeBase.num = pCodecCtx->time_base.num;
         pTimeBase.den = pCodecCtx->time_base.den;
         fps = 1.0/ av_q2d(pCodecCtx->time_base)/ FFMAX(pCodecCtx->ticks_per_frame, 1);
-        NSLog(@"fps_method(tbc): 1/av_q2d()=%g",fps);
+        fprintf(stderr,"fps_method(tbc): 1/av_q2d()=%g",fps);
         pcc->time_base.num = 1;
         pcc->time_base.den = fps;
     }
@@ -305,8 +401,8 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
         vAudioStreamIdx = pst2->index;
         pAudioOutputCodecContext = pst2->codec;
         avcodec_get_context_defaults3( pAudioOutputCodecContext, pAudioCodec );
-        NSLog(@"Audio Stream:%d",vAudioStreamIdx);
-        NSLog(@"pAudioCodecCtx->bits_per_coded_sample=%d",pAudioCodecCtx->bits_per_coded_sample);
+        fprintf(stderr,"Audio Stream:%d",vAudioStreamIdx);
+        fprintf(stderr,"pAudioCodecCtx->bits_per_coded_sample=%d",pAudioCodecCtx->bits_per_coded_sample);
         
         pAudioOutputCodecContext->codec_type = AVMEDIA_TYPE_AUDIO;
         pAudioOutputCodecContext->codec_id = AV_CODEC_ID_AAC;
@@ -333,7 +429,7 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
         pAudioOutputCodecContext->ticks_per_frame = pAudioCodecCtx->ticks_per_frame;
         pAudioOutputCodecContext->frame_size = 1024;
         
-        NSLog(@"profile:%d, sample_rate:%d, channles:%d", pAudioOutputCodecContext->profile, pAudioOutputCodecContext->sample_rate, pAudioOutputCodecContext->channels);
+        fprintf(stderr,"profile:%d, sample_rate:%d, channles:%d", pAudioOutputCodecContext->profile, pAudioOutputCodecContext->sample_rate, pAudioOutputCodecContext->channels);
         AVDictionary *opts = NULL;
         av_dict_set(&opts, "strict", "experimental", 0);
         
@@ -372,7 +468,7 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
         vRet = avio_open( &fc->pb, fc->filename, AVIO_FLAG_WRITE );
         if(vRet!=0)
         {
-            NSLog(@"avio_open(%s) error", fc->filename);
+            fprintf(stderr,"avio_open(%s) error", fc->filename);
         }
     }
     
@@ -381,7 +477,7 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
     
     vRet = avformat_write_header( fc, NULL );
     if(vRet==0)
-        return true;
+        return 1;
     else
-        return false;
+        return 0;
 }
