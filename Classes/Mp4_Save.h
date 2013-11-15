@@ -19,6 +19,8 @@ extern void h264_file_close(AVFormatContext *fc);
 
 extern void h264_file_write_frame2(AVFormatContext *fc, int vStreamIdx, AVPacket *pkt );
 
+extern int MoveMP4MoovToHeader(char *pSrc, char *pDst);
+
 typedef enum
 {
     eH264RecIdle = 0,
