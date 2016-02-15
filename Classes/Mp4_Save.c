@@ -460,7 +460,9 @@ int h264_file_create(const char *pFilePath, AVFormatContext *fc, AVCodecContext 
     if(fc->oformat->flags & AVFMT_GLOBALHEADER)
     {
         pcc->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        pAudioOutputCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        if (pAudioOutputCodecContext) {
+            pAudioOutputCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        }
     }
     
     if ( !( fc->oformat->flags & AVFMT_NOFILE ) )
